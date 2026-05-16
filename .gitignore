@@ -1,0 +1,28 @@
+@"
+# Python
+__pycache__/
+*.pyc
+.env
+*.log
+
+# React / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Large ML/data files
+*.npy
+*.zip
+*.dat
+*.hea
+
+# Optional model files - remove these lines if you want to push models too
+*.pkl
+*.keras
+*.h5
+
+# Temp folders
+tmp*/
+_ptbxl_zip_extract_tmp/
+zip_test_tmp/
+"@ | Set-Content .gitignore

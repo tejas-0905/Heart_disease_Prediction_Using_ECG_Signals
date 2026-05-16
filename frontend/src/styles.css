@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.bg-app-shell {
+  background:
+    linear-gradient(135deg, #111827, #0f172a 48%, #020617),
+    linear-gradient(90deg, #1e293b 1px, transparent 1px),
+    linear-gradient(#1e293b 1px, transparent 1px);
+  background-size:
+    auto,
+    44px 44px,
+    44px 44px;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-md bg-slate-800 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-700;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950;
+  }
+
+  .btn-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100;
+  }
+}
+
+.bg-medical {
+  background:
+    linear-gradient(rgba(248, 250, 252, 0.92), rgba(248, 250, 252, 0.92)),
+    linear-gradient(90deg, rgba(20, 184, 166, 0.14) 1px, transparent 1px),
+    linear-gradient(rgba(20, 184, 166, 0.14) 1px, transparent 1px),
+    radial-gradient(circle at 10% 15%, rgba(14, 165, 233, 0.14), transparent 24%),
+    radial-gradient(circle at 85% 10%, rgba(16, 185, 129, 0.12), transparent 26%);
+  background-size:
+    auto,
+    42px 42px,
+    42px 42px,
+    auto,
+    auto;
+}
+
+.bg-ecg-grid {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
+    linear-gradient(90deg, rgba(248, 113, 113, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(248, 113, 113, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(248, 113, 113, 0.34) 1px, transparent 1px),
+    linear-gradient(rgba(248, 113, 113, 0.34) 1px, transparent 1px);
+  background-size:
+    auto,
+    18px 18px,
+    18px 18px,
+    90px 90px,
+    90px 90px;
+}
