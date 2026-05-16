@@ -282,7 +282,7 @@ function App() {
               <HeartPulse className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">ECG Diagnostic Command Center</h1>
+              <h1 className="text-xl font-bold tracking-tight">ECG Monitoring & Analysis System</h1>
               <p className="text-xs text-slate-300">Patient intake, ECG review, diagnosis, and reports.</p>
             </div>
           </div>
