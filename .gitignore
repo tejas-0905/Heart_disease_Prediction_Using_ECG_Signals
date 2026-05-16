@@ -1,4 +1,3 @@
-@"
 # Python
 __pycache__/
 *.pyc
@@ -10,13 +9,15 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env
 
+# Backend environment
+backend/.env
+backend/.git_nested_backup/
+
 # Large ML/data files
 *.npy
 *.zip
 *.dat
 *.hea
-
-# Optional model files - remove these lines if you want to push models too
 *.pkl
 *.keras
 *.h5
@@ -25,4 +26,3 @@ frontend/.env
 tmp*/
 _ptbxl_zip_extract_tmp/
 zip_test_tmp/
-"@ | Set-Content .gitignore
