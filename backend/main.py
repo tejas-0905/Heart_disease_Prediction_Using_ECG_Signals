@@ -18,6 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent
 ENCODER_PATH = BASE_DIR / "tcvae_encoder.keras"
 CLASSIFIER_PATH = BASE_DIR / "knn_ecg_classifier.pkl"
 STATISTICAL_CLASSIFIER_PATH = BASE_DIR / "statistical_ecg_classifier.pkl"
+COMPRESSED_STATISTICAL_CLASSIFIER_PATH = BASE_DIR / "statistical_ecg_classifier_compressed.pkl"
 FS = 500
 WINDOW_SIZE = 500
 ABNORMAL_PROBABILITY_THRESHOLD = 0.40
@@ -166,8 +167,14 @@ else:
     startup_warnings.append(f"Missing trained encoder model: {ENCODER_PATH}. Using statistical ECG encoder fallback.")
     print(f"WARNING: {startup_warnings[-1]}")
 
-if using_statistical_encoder and STATISTICAL_CLASSIFIER_PATH.exists():
-    classifier_path = STATISTICAL_CLASSIFIER_PATH
+if using_statistical_encoder and (
+    STATISTICAL_CLASSIFIER_PATH.exists() or COMPRESSED_STATISTICAL_CLASSIFIER_PATH.exists()
+):
+    classifier_path = (
+        STATISTICAL_CLASSIFIER_PATH
+        if STATISTICAL_CLASSIFIER_PATH.exists()
+        else COMPRESSED_STATISTICAL_CLASSIFIER_PATH
+    )
     classifier_label = "statistical fallback classifier"
 elif CLASSIFIER_PATH.exists():
     classifier_path = CLASSIFIER_PATH
