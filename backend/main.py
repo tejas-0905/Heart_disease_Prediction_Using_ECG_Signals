@@ -166,8 +166,19 @@ else:
     startup_warnings.append(f"Missing trained encoder model: {ENCODER_PATH}. Using statistical ECG encoder fallback.")
     print(f"WARNING: {startup_warnings[-1]}")
 
-classifier_path = STATISTICAL_CLASSIFIER_PATH if using_statistical_encoder else CLASSIFIER_PATH
-classifier_label = "statistical fallback classifier" if using_statistical_encoder else "TC-VAE kNN classifier"
+if using_statistical_encoder and STATISTICAL_CLASSIFIER_PATH.exists():
+    classifier_path = STATISTICAL_CLASSIFIER_PATH
+    classifier_label = "statistical fallback classifier"
+elif CLASSIFIER_PATH.exists():
+    classifier_path = CLASSIFIER_PATH
+    classifier_label = "TC-VAE kNN classifier"
+    if using_statistical_encoder:
+        startup_warnings.append(
+            "Statistical fallback classifier is missing. Using TC-VAE kNN classifier with statistical features."
+        )
+else:
+    classifier_path = STATISTICAL_CLASSIFIER_PATH if using_statistical_encoder else CLASSIFIER_PATH
+    classifier_label = "statistical fallback classifier" if using_statistical_encoder else "TC-VAE kNN classifier"
 
 print(f"Loading {classifier_label}...")
 if classifier_path.exists():
