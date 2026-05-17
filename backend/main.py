@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Header, HTTPException
 import numpy as np
-import tensorflow as tf
 import joblib
 import pandas as pd
 import io
@@ -15,22 +14,10 @@ from scipy.signal import butter, lfilter
 load_dotenv()
 API_KEY_CREDIT = os.getenv("ECG_API_KEY", "sumit_ecg_secure_access_2026")
 BASE_DIR = Path(__file__).resolve().parent
-ENCODER_PATH = BASE_DIR / "tcvae_encoder.keras"
-CLASSIFIER_PATH = BASE_DIR / "knn_ecg_classifier.pkl"
-STATISTICAL_CLASSIFIER_PATH = BASE_DIR / "statistical_ecg_classifier.pkl"
-COMPRESSED_STATISTICAL_CLASSIFIER_PATH = BASE_DIR / "statistical_ecg_classifier_compressed.pkl"
+STATISTICAL_CLASSIFIER_PATH = BASE_DIR / "statistical_ecg_classifier_small.pkl"
 FS = 500
 WINDOW_SIZE = 500
 ABNORMAL_PROBABILITY_THRESHOLD = 0.40
-
-# --- CRITICAL: REDEFINE SAMPLING FOR KERAS LOAD ---
-@tf.keras.utils.register_keras_serializable(name="sampling")
-def sampling(args):
-    z_mean, z_log_var = args
-    batch = tf.shape(z_mean)[0]
-    dim = tf.shape(z_mean)[1]
-    epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-    return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 # Initialize the Web App
 app = FastAPI(title="Explainable ECG Diagnostic API")
@@ -106,7 +93,26 @@ def prepare_ecg_window(raw_signal):
     return working_signal / peak
 
 
-def classify_latent_features(latent_features):
+def extract_statistical_features(signal):
+    signal = np.asarray(signal).reshape(-1).astype(float)
+    diff = np.diff(signal)
+    q25, q75 = np.percentile(signal, [25, 75])
+    return np.array(
+        [
+            np.mean(signal),
+            np.std(signal),
+            np.min(signal),
+            np.max(signal),
+            q75 - q25,
+            np.mean(np.abs(diff)) if diff.size else 0.0,
+            np.sqrt(np.mean(np.square(signal))),
+            np.mean(np.abs(signal - np.mean(signal))),
+        ],
+        dtype=float,
+    )
+
+
+def classify_ecg_features(latent_features):
     if hasattr(classifier, "predict_proba"):
         abnormal_probability = float(classifier.predict_proba(latent_features.reshape(1, -1))[0][1])
         prediction = 1 if abnormal_probability >= ABNORMAL_PROBABILITY_THRESHOLD else 0
@@ -116,82 +122,17 @@ def classify_latent_features(latent_features):
     return prediction, None
 
 
-# Load Models (Keras now knows what 'sampling' means)
-encoder = None
+# Load lightweight deployment model
 classifier = None
-using_statistical_encoder = False
 startup_errors = []
-startup_warnings = []
-
-
-class StatisticalEcgEncoder:
-    """Fallback encoder used when the saved Keras archive has no weights."""
-
-    def predict(self, signals, verbose=0):
-        batch_features = []
-        for sample in signals:
-            signal = np.asarray(sample).reshape(-1).astype(float)
-            diff = np.diff(signal)
-            q25, q75 = np.percentile(signal, [25, 75])
-            features = np.array(
-                [
-                    np.mean(signal),
-                    np.std(signal),
-                    np.min(signal),
-                    np.max(signal),
-                    q75 - q25,
-                    np.mean(np.abs(diff)) if diff.size else 0.0,
-                    np.sqrt(np.mean(np.square(signal))),
-                    np.mean(np.abs(signal - np.mean(signal))),
-                ],
-                dtype=float,
-            )
-            batch_features.append(features)
-
-        return np.asarray(batch_features)
-
-print("Loading TC-VAE Encoder...")
-if ENCODER_PATH.exists():
-    try:
-        encoder = tf.keras.models.load_model(ENCODER_PATH, compile=False)
-    except Exception as exc:
-        encoder = StatisticalEcgEncoder()
-        using_statistical_encoder = True
-        startup_warnings.append(
-            f"Could not load trained encoder ({exc}). Using statistical ECG encoder fallback."
-        )
-        print(f"WARNING: {startup_warnings[-1]}")
-else:
-    encoder = StatisticalEcgEncoder()
-    using_statistical_encoder = True
-    startup_warnings.append(f"Missing trained encoder model: {ENCODER_PATH}. Using statistical ECG encoder fallback.")
-    print(f"WARNING: {startup_warnings[-1]}")
-
-if using_statistical_encoder and (
-    STATISTICAL_CLASSIFIER_PATH.exists() or COMPRESSED_STATISTICAL_CLASSIFIER_PATH.exists()
-):
-    classifier_path = (
-        STATISTICAL_CLASSIFIER_PATH
-        if STATISTICAL_CLASSIFIER_PATH.exists()
-        else COMPRESSED_STATISTICAL_CLASSIFIER_PATH
-    )
-    classifier_label = "statistical fallback classifier"
-elif CLASSIFIER_PATH.exists():
-    classifier_path = CLASSIFIER_PATH
-    classifier_label = "TC-VAE kNN classifier"
-    if using_statistical_encoder:
-        startup_warnings.append(
-            "Statistical fallback classifier is missing. Using TC-VAE kNN classifier with statistical features."
-        )
-else:
-    classifier_path = STATISTICAL_CLASSIFIER_PATH if using_statistical_encoder else CLASSIFIER_PATH
-    classifier_label = "statistical fallback classifier" if using_statistical_encoder else "TC-VAE kNN classifier"
+startup_warnings = ["Using lightweight statistical ECG model for deployment."]
+classifier_label = "lightweight statistical classifier"
 
 print(f"Loading {classifier_label}...")
-if classifier_path.exists():
-    classifier = joblib.load(classifier_path)
+if STATISTICAL_CLASSIFIER_PATH.exists():
+    classifier = joblib.load(STATISTICAL_CLASSIFIER_PATH)
 else:
-    startup_errors.append(f"Missing trained classifier model: {classifier_path}")
+    startup_errors.append(f"Missing trained classifier model: {STATISTICAL_CLASSIFIER_PATH}")
     print(f"WARNING: {startup_errors[-1]}")
 
 @app.get("/")
@@ -201,7 +142,7 @@ def home():
         "message": "Secure ECG Server is Running",
         "model_errors": startup_errors,
         "model_warnings": startup_warnings,
-        "encoder_mode": "statistical_fallback" if using_statistical_encoder else "tcvae",
+        "encoder_mode": "statistical_features",
         "classifier": classifier_label,
     }
 
@@ -226,23 +167,13 @@ async def diagnose_ecg(
         contents = await file.read()
         raw_signal = parse_ecg_upload(contents)
         prepared_signal = prepare_ecg_window(raw_signal)
-        
-        # Reshape for model input: (Batch, Timesteps, Channels) -> (1, 500, 1)
-        raw_signal_expanded = np.expand_dims(prepared_signal, axis=(0, -1))
-        
-        # Get the 8 explainable latent numbers
-        # Note: [0] gets the z_mean which we use for classification
-        latent_features = encoder.predict(raw_signal_expanded)[0]
-        if isinstance(latent_features, (list, tuple)):
-            latent_features = latent_features[0]
-        latent_features = np.asarray(latent_features, dtype=float).reshape(-1)
-        
-        prediction, abnormal_probability = classify_latent_features(latent_features)
+        features = extract_statistical_features(prepared_signal)
+        prediction, abnormal_probability = classify_ecg_features(features)
         
         return {
             "status": "success",
             "diagnosis": "Abnormal" if prediction == 1 else "Normal",
-            "latent_representation": latent_features.tolist(),
+            "latent_representation": features.tolist(),
             "abnormal_probability": abnormal_probability,
             "screening_threshold": ABNORMAL_PROBABILITY_THRESHOLD if abnormal_probability is not None else None,
         }

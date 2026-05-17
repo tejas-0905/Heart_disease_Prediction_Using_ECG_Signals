@@ -6,5 +6,4 @@ pandas
 scipy
 scikit-learn
 joblib
-tensorflow
 python-dotenv
