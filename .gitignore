@@ -10,8 +10,11 @@ frontend/dist/
 frontend/.env
 
 # Backend environment
+ecg_env/
 backend/.env
 backend/.git_nested_backup/
+a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0
+ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3/
 
 # Large ML/data files
 *.npy
@@ -26,3 +29,4 @@ backend/.git_nested_backup/
 tmp*/
 _ptbxl_zip_extract_tmp/
 zip_test_tmp/
+ecg_env
