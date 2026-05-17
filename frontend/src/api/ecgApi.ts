@@ -1,7 +1,7 @@
 import type { ApiConfig, DiagnosisResponse } from "../types/diagnosis";
 
 export const DEFAULT_API_CONFIG: ApiConfig = {
-  endpoint: "http://127.0.0.1:8000/diagnose",
+  endpoint: import.meta.env.VITE_API_URL || "https://ecg-backend-mmbi.onrender.com/diagnose",
   apiKey: "sumit_ecg_secure_access_2026",
 };
 
